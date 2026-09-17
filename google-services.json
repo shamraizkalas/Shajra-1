@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1061954864816",
+    "project_id": "fintrack-ai-z8r9w",
+    "storage_bucket": "fintrack-ai-z8r9w.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1061954864816:android:ced021f49376a101f29d75",
+        "android_client_info": {
+          "package_name": "com.shajranasab"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAdx3ZCp-SP6vF4sQYBs2C25ve52KOTT1w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

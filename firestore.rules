@@ -1,0 +1,90 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isSuperAdmin() {
+      return signedIn() && request.auth.token.email == 'shamraizkalas@gmail.com';
+    }
+    function hasProfile() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    function profile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    function isAdmin() {
+      return isSuperAdmin() || (hasProfile() && profile().data.role in ['admin', 'superAdmin']);
+    }
+    function isApproved() {
+      return signedIn() && (isSuperAdmin() || (hasProfile() && profile().data.approved == true));
+    }
+
+    match /users/{uid} {
+      // Users can see their own profile; admins can manage user records through the app.
+      allow read: if signedIn() && (uid == request.auth.uid || isAdmin());
+
+      // Normal signup creates only a pending viewer profile. The one configured
+      // Super Admin email may bootstrap its own profile without needing a UID setup.
+      allow create: if signedIn() && uid == request.auth.uid && (
+        (
+          request.resource.data.role == 'viewer' &&
+          request.resource.data.approved == false &&
+          request.resource.data.uid == uid
+        ) ||
+        (
+          isSuperAdmin() &&
+          request.resource.data.uid == uid &&
+          request.resource.data.role == 'superAdmin' &&
+          request.resource.data.approved == true &&
+          request.resource.data.email == 'shamraizkalas@gmail.com'
+        )
+      );
+
+      // A user may change only safe self fields. Role/approval/pinHash are protected.
+      allow update: if isSuperAdmin() || (
+        signedIn() && uid == request.auth.uid &&
+        request.resource.data.role == resource.data.role &&
+        request.resource.data.approved == resource.data.approved
+      );
+      allow delete: if isSuperAdmin();
+    }
+
+    // Pending users are intentionally allowed to read the family tree.
+    match /people/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /announcements/{id} {
+      allow read: if signedIn();
+      allow create: if isAdmin();
+      allow update, delete: if isSuperAdmin() || (
+        isAdmin() && resource.data.createdBy == request.auth.uid
+      );
+    }
+
+    // Only trusted Cloud Functions write audit logs.
+    match /auditLogs/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /notifications/{id} {
+      allow read: if signedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create, update, delete: if false;
+    }
+
+    match /resetRequests/{id} {
+      allow read: if isAdmin();
+      allow create: if signedIn() && id == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /tempAccess/{id} {
+      allow read, write: if false;
+    }
+
+    match /pinAttempts/{id} {
+      allow read, write: if false;
+    }
+  }
+}
